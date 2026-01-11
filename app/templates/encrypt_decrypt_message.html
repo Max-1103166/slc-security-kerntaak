@@ -1,0 +1,132 @@
+{% extends "index.html" %}
+{% block body_content %}
+<div class="col-12 container">
+    <!-- versturen -->
+    <div class="col-12">
+        <div class="col-6">
+            <form id="sendForm" class="send_form">
+                <div class="user_select">
+                    <label for="users">Kies een user (afzender):</label>
+                    <select id="users" name="user_id">
+                    {% for user in users %}
+                        <option value="{{ user.id }}">{{ user.name }}</option>
+                    {% endfor %}
+                    </select>
+                </div>
+
+                <div class="user_select">
+                    <label for="receiver">Kies een ontvanger:</label>
+                    <select id="receiver" name="receiver_id">
+                    {% for user in users %}
+                        <option value="{{ user.id }}">{{ user.name }}</option>
+                    {% endfor %}
+                    </select>
+                </div>
+
+                <div class="message_input">
+                    <label for="message">Bericht:</label>
+                    <input type="text" name="message" placeholder="Type je bericht" id="message" required>
+                </div>
+
+                <button type="submit" id="submit_send_button">Verstuur</button>
+            </form>
+
+        </div>
+        <div class="response col-6" >
+            <p>Encrypted bericht:</p>
+            <div class="message" style="font-size:12px; word-wrap: break-word;"></div>
+
+
+        </div>
+    </div>
+
+    <!-- ophalen van bericht -->
+    <div class="col-12">
+        <div class="col-6">
+            <form id="retrieveForm" class="send_form">
+                <div class="user_select">
+                    <label for="current_user">Kies de ontvanger:</label>
+                    <select id="current_user" name="receiver_id">
+                    {% for user in users %}
+                        <option value="{{ user.id }}">{{ user.name }}</option>
+                    {% endfor %}
+                    </select>
+                </div>
+                <div class="user_messages">
+                </div>
+                <button type="submit" id="retrieve_button">decrypt laatst ontvangen bericht</button>
+            </form>
+        </div>
+        <div class="col-6">
+            <p>Decrypted bericht:</p>
+            <div id="decrypted_message">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+<!--    javascript voor ophalen van en versturen van bericht-->
+document.getElementById('sendForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const responseEl = document.getElementsByClassName('response')[0];
+
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+
+
+    responseEl.querySelector('.message').textContent = "aan het encrypten...";
+    try {
+        const res = await fetch('/api/send_message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        if (res.ok && result.success) {
+            responseEl.querySelector('.message').textContent = result.messages['message'];
+            messageEl = responseEl.querySelector('.message');
+            const br = document.createElement('br');
+            messageEl.appendChild(br);
+            const saltTitle = document.createElement('span');
+            saltTitle.textContent = 'Salt: ';
+            saltTitle.style.fontSize = '14px';
+            const saltText = document.createTextNode(result.messages['salt']);
+            messageEl.appendChild(saltTitle);
+            const br2 = document.createElement('br');
+            messageEl.appendChild(br2);
+            messageEl.appendChild(saltText);
+        } else {
+            responseEl.querySelector('.message').textContent = result.message || "Er is een fout opgetreden.";
+        }
+
+
+    } catch (err) {
+        responseEl.textContent = "Fout bij verzenden van bericht.";
+    }
+});
+
+document.getElementById('retrieveForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const responseEl = document.getElementById('decrypted_message');
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+
+    responseEl.textContent = "aan het decrypten...";
+    try {
+        const res = await fetch('/api/retrieve_message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        console.log(result)
+        responseEl.textContent = result.messages['message'];
+    } catch (err) {
+        responseEl.textContent = "Fout bij ophalen van bericht.";
+    }
+});
+
+
+</script>
+{% endblock %}
